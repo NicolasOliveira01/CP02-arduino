@@ -1,0 +1,4 @@
+notebook
+matplotlib
+tensorflow
+scikit-learn
