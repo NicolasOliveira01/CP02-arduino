@@ -1,0 +1,109 @@
+const int sensorPin1 = A0; 
+const int sensorPin2 = A1;
+// var que dizem em qual pino está os dois potenciomentros (não 
+// são de leituras) e eles simulam o valor da umidade
+const int ledPin = 7;
+// irrigador (representa quando o irrigador deve o não ligar)
+
+int moisture1 = 0;
+int moisture2 = 0;
+// Cada potenciômetro simula um sensor de umidades e essas duas 
+// var armazenam os valores do potenciometro (input), esse valor 
+// varia de 0 a 1023
+float normalizedMoisture1, normalizedMoisture2;
+// depois que ele foi normalizado (dividido por 1023)
+
+
+// === Copie este trecho para o Arduino IDE === 
+
+float weights_input_hidden[2][4] = {
+  {2.553731, 2.511473, -3.037092, 2.980642},
+  {2.632648, 2.033077, -1.946255, 2.346183},
+};
+
+float biases_hidden[4] = {-1.685257, -1.390632, 1.579151, -1.718318};
+
+float weights_hidden_output[4] = {-2.049522, -0.934115, 3.283430, -2.530071};
+
+float bias_output = 0.554401;
+
+// =========================================
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(sensorPin1, INPUT);
+  pinMode(sensorPin2, INPUT);
+  pinMode(ledPin, OUTPUT);
+}
+
+float sigmoid(float x) {
+  return 1.0 / (1.0 + exp(-x));
+}
+// implementa a função de sigmoid e deixa qualquer número entre 
+// 0 a 1 
+
+void loop() {
+  moisture1 = analogRead(sensorPin1);
+  moisture2 = analogRead(sensorPin2);
+// le os valores de cada potenciometro e atribui na var
+  
+  normalizedMoisture1 = moisture1/1023.0;
+  normalizedMoisture2 = moisture2/1023.0;
+  
+  float hidden_layer[4];
+  // cria um vetor com 4 elementos, em que cada elemento é a saída de 
+  // um neurônio da camada oculta (valor de ativação)
+  
+  
+  for (int i=0; i<4; i++) {
+    hidden_layer[i] = (normalizedMoisture1 * weights_input_hidden[0][i])
+                    + (normalizedMoisture2 * weights_input_hidden[1][i])
+                    + biases_hidden[i];
+    // normalizedMoisture1 e normalizedMoisture2 são os inputs que são
+    // as umidades dos sensores
+    // cada input vai ser multiplicado por um weight para cada neurônio
+    // weights_input_hidden[0][i] -> os 4 weight para o input de 'cima'
+    // weights_input_hidden[1][i] -> os 4 weight para o input de 'baixo'
+    // no total são 8 wights diferentes
+    // biases_hidden[i] -> os 4 bias para cada neurônio
+    // para cada neurônio, pega o input1 (umidade superior) * pelo weight 
+    // do neurônio1 para esse input, depois pega o input2 (umidade inferior) * 
+    // pelo weight do neurônio1 para esse input2 (lembrando que são 8 weights
+    // para as 8 * de input[2] e neurônios[4]). Faz a + desses 2 produtos e +
+    // com o bias do neurôinio1 (4 bias, 1 bias para cada neurônio)
+    hidden_layer[i] = sigmoid(hidden_layer[i]);
+    // no final, hidden_layer vai ter 4 valores e chamada a função 'sigmoid'
+    // para cada desses 4 valores (faz uma conta loka)
+  }
+  
+  // até agora o hidden_layer tem 4 valores diferentes (1 para cada neurônio)
+  float output = bias_output;
+  // output sempre vai começar com um valor (bias_output)
+  
+  for (int i=0; i<4; i++){
+    output += hidden_layer[i] * weights_hidden_output[i];
+  }
+  // cada um desses 4 valores diferentes hidden_layer[i] vão ser * por um weight, 
+  // [weight_hidden_output[i] e depois essas 4 vão ser somados se tornando apenas 
+  // 1 valor
+  
+  output = sigmoid(output);
+  // esse valor de output vai ser multiplicado pela função 'sigmoid'
+  
+  if (output > 0.5) {
+    digitalWrite(ledPin, HIGH);
+    // se o output for maior que 0.5, liga o led
+  } else {
+    digitalWrite(ledPin, LOW);
+    // se o output for menor que 0.5, delisga o led
+  }
+  
+  // info na serial 
+  Serial.print("Sensor 1: "); Serial.print(normalizedMoisture1, 2);
+  Serial.print(" | Sensor 2: "); Serial.print(normalizedMoisture2, 2);
+  Serial.print(" | ANN output: "); Serial.println(output, 2);
+  
+  delay(1000);
+}
+
+
